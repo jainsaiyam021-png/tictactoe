@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe - Portfolio Project</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0b0f19',
+                        cardBg: 'rgba(17, 24, 39, 0.7)',
+                        neonX: '#00f2fe',
+                        neonO: '#ff0844',
+                        accentViolet: '#7c3aed'
+                    },
+                    boxShadow: {
+                        glowX: '0 0 20px rgba(0, 242, 254, 0.4)',
+                        glowO: '0 0 20px rgba(255, 8, 68, 0.4)',
+                        glowAccent: '0 0 25px rgba(124, 58, 237, 0.3)',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0b0f19;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(124, 58, 237, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 85% 80%, rgba(0, 242, 254, 0.12) 0%, transparent 40%);
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .cell-btn {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .cell-btn:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.02);
+            border-color: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Symbol Animations */
+        .symbol-pop {
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        /* Winning Pulse */
+        .win-cell {
+            animation: pulseGlow 1.2s infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: scale(1); filter: brightness(1); }
+            100% { transform: scale(1.04); filter: brightness(1.3); }
+        }
+
+        code, pre {
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.5);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="text-slate-200 flex flex-col justify-between min-h-screen selection:bg-purple-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="w-full max-w-5xl mx-auto px-4 pt-6 pb-2">
+        <div class="glass-panel rounded-2xl px-6 py-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white font-black text-xl shadow-lg">
+                    <i class="fa-solid fa-gamepad"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-xl tracking-tight bg-gradient-to-r from-cyan-400 via-teal-300 to-purple-400 bg-clip-text text-transparent">
+                        TicTacToe<span class="text-xs ml-1 px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">PRO</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Developer Portfolio Showcase Project</p>
+                </div>
+            </div>
+
+            <!-- Header Controls -->
+            <div class="flex items-center space-x-3">
+                <button id="soundToggle" class="p-2.5 rounded-xl glass-panel hover:bg-slate-800 text-slate-300 transition-all text-sm flex items-center gap-2" title="Toggle Sound">
+                    <i id="soundIcon" class="fa-solid fa-volume-high text-cyan-400"></i>
+                    <span class="hidden sm:inline text-xs font-semibold">Audio</span>
+                </button>
+                <button id="codeModalBtn" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow-md hover:shadow-purple-500/25 flex items-center gap-2">
+                    <i class="fa-solid fa-code"></i>
+                    <span>Minimax Code</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="w-full max-w-5xl mx-auto px-4 py-4 flex-grow flex flex-col justify-center items-center">
+        
+        <div class="w-full max-w-2xl flex flex-col gap-5">
+
+            <!-- Controls & Mode Selector -->
+            <div class="glass-panel p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+                <!-- Mode Toggle -->
+                <div class="flex items-center bg-slate-900/80 p-1 rounded-xl border border-slate-800 w-full sm:w-auto">
+                    <button id="pvpModeBtn" class="flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md">
+                        <i class="fa-solid fa-user-group"></i> 2 Player (PvP)
+                    </button>
+                    <button id="aiModeBtn" class="flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold text-slate-400 transition-all duration-200 flex items-center justify-center gap-2 hover:text-white">
+                        <i class="fa-solid fa-robot"></i> VS AI
+                    </button>
+                </div>
+
+                <!-- Difficulty Selector (Visible only in AI Mode) -->
+                <div id="difficultyContainer" class="hidden flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <span class="text-xs font-semibold text-slate-400">Level:</span>
+                    <select id="difficultySelect" class="bg-slate-900 border border-slate-700 text-xs font-semibold text-cyan-300 rounded-lg px-3 py-2 outline-none focus:border-purple-500 transition-all">
+                        <option value="easy">Easy (Random)</option>
+                        <option value="medium">Medium (Smart)</option>
+                        <option value="hard" selected>Unbeatable (Minimax)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Scoreboard -->
+            <div class="grid grid-cols-3 gap-3 text-center">
+                <div class="glass-panel p-3 rounded-2xl border-l-4 border-l-cyan-400 shadow-lg relative overflow-hidden">
+                    <div class="text-[10px] uppercase tracking-wider font-extrabold text-cyan-400 mb-1 flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-xmark text-sm"></i> Player X
+                    </div>
+                    <div id="scoreX" class="text-2xl font-black text-slate-100">0</div>
+                    <div id="roleXLabel" class="text-[10px] text-slate-400 mt-0.5">Player 1</div>
+                </div>
+
+                <div class="glass-panel p-3 rounded-2xl border-l-4 border-l-slate-500 shadow-lg">
+                    <div class="text-[10px] uppercase tracking-wider font-extrabold text-slate-400 mb-1 flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-handshake text-sm"></i> Ties
+                    </div>
+                    <div id="scoreTies" class="text-2xl font-black text-slate-100">0</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">Draws</div>
+                </div>
+
+                <div class="glass-panel p-3 rounded-2xl border-l-4 border-l-rose-500 shadow-lg relative overflow-hidden">
+                    <div class="text-[10px] uppercase tracking-wider font-extrabold text-rose-400 mb-1 flex items-center justify-center gap-1">
+                        <i class="fa-regular fa-circle text-sm"></i> Player O
+                    </div>
+                    <div id="scoreO" class="text-2xl font-black text-slate-100">0</div>
+                    <div id="roleOLabel" class="text-[10px] text-slate-400 mt-0.5">Player 2</div>
+                </div>
+            </div>
+
+            <!-- Turn & Game Status Banner -->
+            <div class="glass-panel py-3 px-5 rounded-xl flex items-center justify-between text-sm shadow-md">
+                <div id="turnIndicator" class="flex items-center gap-2.5 font-bold">
+                    <span class="text-slate-400">Current Turn:</span>
+                    <span id="turnBadge" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-xs">
+                        <i class="fa-solid fa-xmark text-sm"></i> Player X
+                    </span>
+                </div>
+                <div id="statusMessage" class="hidden text-xs font-extrabold text-amber-400 flex items-center gap-1">
+                    <i class="fa-solid fa-circle-notch animate-spin"></i> AI is thinking...
+                </div>
+            </div>
+
+            <!-- Tic Tac Toe Grid -->
+            <div class="relative w-full aspect-square max-w-[420px] mx-auto p-3 glass-panel rounded-3xl shadow-2xl border border-slate-700/50 flex items-center justify-center">
+                <div id="board" class="grid grid-cols-3 gap-3 w-full h-full">
+                    <!-- 9 Board Cells generated via JavaScript for cleaner logic -->
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-center gap-4">
+                <button id="resetGameBtn" class="px-5 py-2.5 rounded-xl glass-panel hover:bg-slate-800 text-slate-200 font-bold text-xs transition-all flex items-center gap-2 border border-slate-700 shadow-md">
+                    <i class="fa-solid fa-rotate-right text-cyan-400"></i> Restart Match
+                </button>
+                <button id="resetScoresBtn" class="px-5 py-2.5 rounded-xl glass-panel hover:bg-slate-800 text-rose-400 font-bold text-xs transition-all flex items-center gap-2 border border-slate-700/60 shadow-md">
+                    <i class="fa-solid fa-trash-can"></i> Clear Scores
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Winner / Result Overlay Modal -->
+    <div id="resultModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="resultCard" class="glass-panel border border-slate-700 p-8 rounded-3xl max-w-sm w-full text-center transform scale-90 transition-transform duration-300 shadow-2xl relative overflow-hidden">
+            <div id="resultGradient" class="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl opacity-30 pointer-events-none"></div>
+            
+            <div id="resultIconContainer" class="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center text-4xl shadow-xl">
+                <!-- Icon inserted via JS -->
+            </div>
+
+            <h2 id="resultTitle" class="text-2xl font-black text-white mb-1">Player X Wins!</h2>
+            <p id="resultSubtitle" class="text-xs text-slate-400 mb-6">Brilliant tactical victory!</p>
+
+            <button id="modalPlayAgainBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-extrabold text-sm shadow-lg shadow-purple-500/25 transition-all">
+                Play Next Round
+            </button>
+        </div>
+    </div>
+
+    <!-- Code Showcase Modal (Recruiter / Portfolio View) -->
+    <div id="codeModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-panel border border-slate-700 rounded-3xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+            <!-- Modal Header -->
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-brain text-purple-400 text-xl"></i>
+                    <div>
+                        <h3 class="font-extrabold text-lg text-white">Minimax Algorithm Implementation</h3>
+                        <p class="text-xs text-slate-400">Recursive Decision Tree logic for Unbeatable AI</p>
+                    </div>
+                </div>
+                <button id="closeCodeModalBtn" class="w-8 h-8 rounded-lg glass-panel hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-6 overflow-y-auto flex-grow text-xs space-y-4">
+                <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 text-slate-300">
+                    <p class="leading-relaxed mb-2">
+                        <strong class="text-purple-400">How Unbeatable AI Works:</strong> The algorithm evaluates every possible future board state using recursion. Scores are assigned as +10 for AI win, -10 for Player win, and 0 for tie, subtracted by search depth to favor quicker wins.
+                    </p>
+                </div>
+
+                <pre class="bg-slate-950 p-4 rounded-xl text-emerald-400 border border-slate-800 overflow-x-auto text-[11px] leading-relaxed">
+<code>/* Minimax Engine Excerpt */
+function minimax(board, depth, isMaximizing) {
+    let score = evaluateBoard(board);
+
+    if (score === 10) return score - depth;
+    if (score === -10) return score + depth;
+    if (!isMovesLeft(board)) return 0;
+
+    if (isMaximizing) {
+        let best = -Infinity;
+        for (let i = 0; i &lt; 9; i++) {
+            if (board[i] === null) {
+                board[i] = 'O'; // AI
+                best = Math.max(best, minimax(board, depth + 1, false));
+                board[i] = null;
+            }
+        }
+        return best;
+    } else {
+        let best = Infinity;
+        for (let i = 0; i &lt; 9; i++) {
+            if (board[i] === null) {
+                board[i] = 'X'; // Human
+                best = Math.min(best, minimax(board, depth + 1, true));
+                board[i] = null;
+            }
+        }
+        return best;
+    }
+}</code></pre>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-800 flex justify-end">
+                <button id="closeCodeModalFooterBtn" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-all">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full max-w-5xl mx-auto px-4 py-4 text-center text-xs text-slate-500">
+        <p>Crafted for Developer Portfolio Showcase • Built with HTML5, Tailwind CSS, & Vanilla JS ES6+</p>
+    </footer>
+
+    <script>
+        // --- Web Audio Synthesizer for SFX ---
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+            }
+
+            playMove(isX) {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                const now = this.ctx.currentTime;
+                if (isX) {
+                    osc.frequency.setValueAtTime(320, now);
+                    osc.frequency.exponentialRampToValueAtTime(640, now + 0.08);
+                } else {
+                    osc.frequency.setValueAtTime(540, now);
+                    osc.frequency.exponentialRampToValueAtTime(270, now + 0.08);
+                }
+
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+                osc.start(now);
+                osc.stop(now + 0.08);
+            }
+
+            playWin() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const notes = [440, 554.37, 659.25, 880];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    const startTime = this.ctx.currentTime + idx * 0.09;
+                    osc.frequency.setValueAtTime(freq, startTime);
+                    gain.gain.setValueAtTime(0.2, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
+
+                    osc.start(startTime);
+                    osc.stop(startTime + 0.25);
+                });
+            }
+
+            playDraw() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                const now = this.ctx.currentTime;
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.linearRampToValueAtTime(120, now + 0.25);
+
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+        }
+
+        const sfx = new SoundEffects();
+
+        // --- Game State Management ---
+        const WINNING_COMBOS = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+            [0, 4, 8], [2, 4, 6]             // Diagonals
+        ];
+
+        let board = Array(9).fill(null);
+        let currentPlayer = 'X';
+        let gameActive = true;
+        let gameMode = 'pvp'; // 'pvp' or 'ai'
+        let aiDifficulty = 'hard'; // 'easy', 'medium', 'hard'
+        let scores = { X: 0, O: 0, ties: 0 };
+
+        // DOM Elements
+        const boardElem = document.getElementById('board');
+        const turnBadge = document.getElementById('turnBadge');
+        const statusMessage = document.getElementById('statusMessage');
+        const pvpModeBtn = document.getElementById('pvpModeBtn');
+        const aiModeBtn = document.getElementById('aiModeBtn');
+        const difficultyContainer = document.getElementById('difficultyContainer');
+        const difficultySelect = document.getElementById('difficultySelect');
+        const roleXLabel = document.getElementById('roleXLabel');
+        const roleOLabel = document.getElementById('roleOLabel');
+
+        const scoreXElem = document.getElementById('scoreX');
+        const scoreOElem = document.getElementById('scoreO');
+        const scoreTiesElem = document.getElementById('scoreTies');
+
+        const resultModal = document.getElementById('resultModal');
+        const resultCard = document.getElementById('resultCard');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultSubtitle = document.getElementById('resultSubtitle');
+        const resultIconContainer = document.getElementById('resultIconContainer');
+        const resultGradient = document.getElementById('resultGradient');
+
+        // Initialize Grid
+        function createBoard() {
+            boardElem.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('button');
+                cell.className = `cell-btn glass-panel rounded-2xl flex items-center justify-center text-4xl font-extrabold focus:outline-none select-none border border-slate-800/80`;
+                cell.dataset.index = i;
+                cell.addEventListener('click', () => handleCellClick(i));
+                boardElem.appendChild(cell);
+            }
+        }
+
+        // Handle Cell Click
+        function handleCellClick(index) {
+            if (!gameActive || board[index] !== null) return;
+            if (gameMode === 'ai' && currentPlayer === 'O') return; // Prevent clicking during AI turn
+
+            makeMove(index, currentPlayer);
+
+            if (gameActive && gameMode === 'ai' && currentPlayer === 'O') {
+                statusMessage.classList.remove('hidden');
+                setTimeout(() => {
+                    makeAIMove();
+                    statusMessage.classList.add('hidden');
+                }, 400);
+            }
+        }
+
+        // Apply Move
+        function makeMove(index, player) {
+            board[index] = player;
+            sfx.playMove(player === 'X');
+
+            const cell = boardElem.children[index];
+            cell.disabled = true;
+
+            if (player === 'X') {
+                cell.innerHTML = `<i class="fa-solid fa-xmark text-cyan-400 symbol-pop"></i>`;
+                cell.classList.add('shadow-glowX', 'border-cyan-500/30');
+            } else {
+                cell.innerHTML = `<i class="fa-regular fa-circle text-rose-500 symbol-pop text-3.5xl"></i>`;
+                cell.classList.add('shadow-glowO', 'border-rose-500/30');
+            }
+
+            const winInfo = checkWin(board, player);
+            if (winInfo) {
+                endGame(false, player, winInfo.combo);
+                return;
+            }
+
+            if (board.every(cell => cell !== null)) {
+                endGame(true);
+                return;
+            }
+
+            // Switch Turn
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            updateTurnDisplay();
+        }
+
+        // Update Turn Indicator
+        function updateTurnDisplay() {
+            if (currentPlayer === 'X') {
+                turnBadge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-xs font-bold";
+                turnBadge.innerHTML = `<i class="fa-solid fa-xmark text-sm"></i> Player X`;
+            } else {
+                const oName = gameMode === 'ai' ? 'AI (O)' : 'Player O';
+                turnBadge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30 text-xs font-bold";
+                turnBadge.innerHTML = `<i class="fa-regular fa-circle text-sm"></i> ${oName}`;
+            }
+        }
+
+        // Check Win Condition
+        function checkWin(currentBoard, player) {
+            for (const combo of WINNING_COMBOS) {
+                if (combo.every(idx => currentBoard[idx] === player)) {
+                    return { combo };
+                }
+            }
+            return null;
+        }
+
+        // End Game Logic
+        function endGame(isTie, winner = null, winningCombo = []) {
+            gameActive = false;
+
+            if (isTie) {
+                scores.ties++;
+                scoreTiesElem.textContent = scores.ties;
+                sfx.playDraw();
+                showResultModal('tie');
+            } else {
+                scores[winner]++;
+                if (winner === 'X') scoreXElem.textContent = scores.X;
+                else scoreOElem.textContent = scores.O;
+
+                // Highlight Winning Cells
+                winningCombo.forEach(idx => {
+                    const cell = boardElem.children[idx];
+                    cell.classList.add('win-cell', winner === 'X' ? 'bg-cyan-500/20' : 'bg-rose-500/20');
+                });
+
+                sfx.playWin();
+                showResultModal(winner);
+            }
+        }
+
+        // Show Result Modal
+        function showResultModal(result) {
+            setTimeout(() => {
+                resultModal.classList.remove('opacity-0', 'pointer-events-none');
+                resultCard.classList.remove('scale-90');
+                resultCard.classList.add('scale-100');
+
+                if (result === 'X') {
+                    resultIconContainer.className = "w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center text-4xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-glowX";
+                    resultIconContainer.innerHTML = `<i class="fa-solid fa-trophy"></i>`;
+                    resultGradient.className = "absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl opacity-30 bg-cyan-500 pointer-events-none";
+                    resultTitle.textContent = "Player X Triumphs!";
+                    resultSubtitle.textContent = gameMode === 'ai' ? "You defeated the AI!" : "Masterclass performance!";
+                } else if (result === 'O') {
+                    resultIconContainer.className = "w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center text-4xl bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-glowO";
+                    resultIconContainer.innerHTML = gameMode === 'ai' ? `<i class="fa-solid fa-robot"></i>` : `<i class="fa-solid fa-trophy"></i>`;
+                    resultGradient.className = "absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl opacity-30 bg-rose-500 pointer-events-none";
+                    resultTitle.textContent = gameMode === 'ai' ? "AI Victorious!" : "Player O Wins!";
+                    resultSubtitle.textContent = gameMode === 'ai' ? "Minimax algorithm played flawlessly." : "Excellent dynamic play!";
+                } else {
+                    resultIconContainer.className = "w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center text-4xl bg-slate-700/40 text-slate-300 border border-slate-600 shadow-md";
+                    resultIconContainer.innerHTML = `<i class="fa-solid fa-handshake-simple"></i>`;
+                    resultGradient.className = "absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl opacity-20 bg-slate-400 pointer-events-none";
+                    resultTitle.textContent = "It's a Draw!";
+                    resultSubtitle.textContent = "Evenly matched battle.";
+                }
+            }, 600);
+        }
+
+        function hideResultModal() {
+            resultModal.classList.add('opacity-0', 'pointer-events-none');
+            resultCard.classList.remove('scale-100');
+            resultCard.classList.add('scale-90');
+        }
+
+        // --- AI LOGIC (Easy, Medium, Minimax Unbeatable) ---
+        function makeAIMove() {
+            let bestIndex;
+
+            if (aiDifficulty === 'easy') {
+                bestIndex = getRandomMove();
+            } else if (aiDifficulty === 'medium') {
+                // 60% Minimax / Smart move, 40% Random
+                if (Math.random() < 0.6) {
+                    bestIndex = getBestMinimaxMove();
+                } else {
+                    bestIndex = getRandomMove();
+                }
+            } else { // Hard - Unbeatable Minimax
+                bestIndex = getBestMinimaxMove();
+            }
+
+            if (bestIndex !== undefined && bestIndex !== null) {
+                makeMove(bestIndex, 'O');
+            }
+        }
+
+        function getRandomMove() {
+            const available = board.map((val, idx) => val === null ? idx : null).filter(val => val !== null);
+            if (available.length === 0) return null;
+            return available[Math.floor(Math.random() * available.length)];
+        }
+
+        function getBestMinimaxMove() {
+            let bestScore = -Infinity;
+            let move = null;
+
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === null) {
+                    board[i] = 'O';
+                    let score = minimax(board, 0, false);
+                    board[i] = null;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        move = i;
+                    }
+                }
+            }
+            return move;
+        }
+
+        function minimax(boardState, depth, isMaximizing) {
+            if (checkWin(boardState, 'O')) return 10 - depth;
+            if (checkWin(boardState, 'X')) return depth - 10;
+            if (boardState.every(cell => cell !== null)) return 0;
+
+            if (isMaximizing) {
+                let bestScore = -Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (boardState[i] === null) {
+                        boardState[i] = 'O';
+                        let score = minimax(boardState, depth + 1, false);
+                        boardState[i] = null;
+                        bestScore = Math.max(score, bestScore);
+                    }
+                }
+                return bestScore;
+            } else {
+                let bestScore = Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (boardState[i] === null) {
+                        boardState[i] = 'X';
+                        let score = minimax(boardState, depth + 1, true);
+                        boardState[i] = null;
+                        bestScore = Math.min(score, bestScore);
+                    }
+                }
+                return bestScore;
+            }
+        }
+
+        // --- Controls & Listeners ---
+        function resetGame() {
+            board = Array(9).fill(null);
+            gameActive = true;
+            currentPlayer = 'X';
+            updateTurnDisplay();
+            createBoard();
+            hideResultModal();
+        }
+
+        function resetScores() {
+            scores = { X: 0, O: 0, ties: 0 };
+            scoreXElem.textContent = '0';
+            scoreOElem.textContent = '0';
+            scoreTiesElem.textContent = '0';
+            resetGame();
+        }
+
+        // Mode Switching
+        pvpModeBtn.addEventListener('click', () => {
+            gameMode = 'pvp';
+            pvpModeBtn.className = "flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md";
+            aiModeBtn.className = "flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold text-slate-400 transition-all duration-200 flex items-center justify-center gap-2 hover:text-white";
+            difficultyContainer.classList.add('hidden');
+            roleXLabel.textContent = "Player 1";
+            roleOLabel.textContent = "Player 2";
+            resetScores();
+        });
+
+        aiModeBtn.addEventListener('click', () => {
+            gameMode = 'ai';
+            aiModeBtn.className = "flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md";
+            pvpModeBtn.className = "flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold text-slate-400 transition-all duration-200 flex items-center justify-center gap-2 hover:text-white";
+            difficultyContainer.classList.remove('hidden');
+            roleXLabel.textContent = "Human (X)";
+            roleOLabel.textContent = "AI (O)";
+            resetScores();
+        });
+
+        difficultySelect.addEventListener('change', (e) => {
+            aiDifficulty = e.target.value;
+            resetGame();
+        });
+
+        document.getElementById('resetGameBtn').addEventListener('click', resetGame);
+        document.getElementById('resetScoresBtn').addEventListener('click', resetScores);
+        document.getElementById('modalPlayAgainBtn').addEventListener('click', resetGame);
+
+        // Sound Toggle
+        const soundToggle = document.getElementById('soundToggle');
+        const soundIcon = document.getElementById('soundIcon');
+        soundToggle.addEventListener('click', () => {
+            sfx.enabled = !sfx.enabled;
+            if (sfx.enabled) {
+                soundIcon.className = "fa-solid fa-volume-high text-cyan-400";
+            } else {
+                soundIcon.className = "fa-solid fa-volume-xmark text-slate-500";
+            }
+        });
+
+        // Developer Code Modal Controls
+        const codeModal = document.getElementById('codeModal');
+        document.getElementById('codeModalBtn').addEventListener('click', () => {
+            codeModal.classList.remove('opacity-0', 'pointer-events-none');
+        });
+        
+        const closeCodeModal = () => codeModal.classList.add('opacity-0', 'pointer-events-none');
+        document.getElementById('closeCodeModalBtn').addEventListener('click', closeCodeModal);
+        document.getElementById('closeCodeModalFooterBtn').addEventListener('click', closeCodeModal);
+
+        // Initial Load
+        createBoard();
+        updateTurnDisplay();
+    </script>
+</body>
+</html>
